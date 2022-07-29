@@ -390,18 +390,14 @@ def first_filter(sv, sv_type, valid_types, if_pass_only, chr_list):
     return False
 
 #second_filter: centromere, non-cov
-def second_filter(sv, if_hg38, dict_centromere, exclude_assem1_non_cover, exclude_assem2_non_cover):
+def second_filter(sv, dict_centromere, exclude_assem1_non_cover, exclude_assem2_non_cover):
     index = sv.idx
     ref_name = sv.ref_name
     sv_pos = sv.sv_pos
     sv_stop = sv.sv_stop
 
-    if if_hg38:
-        centro_start = int(dict_centromere[ref_name][0])
-        centro_end = int(dict_centromere[ref_name][1])
-    else:
-        centro_start = int(dict_centromere['chr'+ref_name][0])
-        centro_end = int(dict_centromere['chr'+ref_name][1])
+    centro_start = int(dict_centromere[ref_name][0])
+    centro_end = int(dict_centromere[ref_name][1])
 
     #centromere
     if (sv_pos > centro_start and sv_pos < centro_end) or (sv_stop > centro_start and sv_stop < centro_end):
@@ -416,18 +412,14 @@ def second_filter(sv, if_hg38, dict_centromere, exclude_assem1_non_cover, exclud
         return True
     
 #second_filter for chrX: centromere, non-cov
-def second_filter_chrx(sv, if_hg38, dict_centromere, exclude_assem1_non_cover, exclude_assem2_non_cover):
+def second_filter_chrx(sv, dict_centromere, exclude_assem1_non_cover, exclude_assem2_non_cover):
     index = sv.idx
     ref_name = sv.ref_name
     sv_pos = sv.sv_pos
     sv_stop = sv.sv_stop
 
-    if if_hg38:
-        centro_start = int(dict_centromere[ref_name][0])
-        centro_end = int(dict_centromere[ref_name][1])
-    else:
-        centro_start = int(dict_centromere['chr'+ref_name][0])
-        centro_end = int(dict_centromere['chr'+ref_name][1])
+    centro_start = int(dict_centromere[ref_name][0])
+    centro_end = int(dict_centromere[ref_name][1])
 
     #centromere
     if (sv_pos > centro_start and sv_pos < centro_end) or (sv_stop > centro_start and sv_stop < centro_end):
@@ -537,7 +529,7 @@ class mappy_alignment:
              self.cal_ins_rela_len()) 
 
         
-def build_map_asm_to_ref_compress(query_fasta_file, liftover_file, interval, if_hg38):
+def build_map_asm_to_ref_compress(query_fasta_file, liftover_file, interval, chr_list):
     ref_name_list = []
     ref_pos_list = []
     
@@ -558,7 +550,7 @@ def build_map_asm_to_ref_compress(query_fasta_file, liftover_file, interval, if_
         pre_contig_name = ""
         for line in f:
             record = line.strip().split()
-            int_ref_name = get_align_info.get_int_chr_name(record[1], if_hg38)
+            int_ref_name = get_align_info.get_int_chr_name(record[1], chr_list)
             contig_name = record[0]
             contig_idx = contig_idx_len[contig_name][0]
 

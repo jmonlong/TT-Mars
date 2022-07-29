@@ -38,10 +38,10 @@ parser.add_argument("tandem_file",
 
 # parser.add_argument("if_hg38_input",
 #                     help="if reference is hg38 or not")
-parser.add_argument("-n",
-                    "--not_hg38",
-                    help="if reference is NOT hg38 (hg19)",
-                    action="store_true")
+# parser.add_argument("-n",
+#                     "--not_hg38",
+#                     help="if reference is NOT hg38 (hg19)",
+#                     action="store_true")
 # parser.add_argument("if_passonly_input",
 #                     help="if consider PASS calls only or not")
 parser.add_argument("-p",
@@ -123,7 +123,7 @@ liftover_file2_0 = args.liftover_file2_0
 
 #liftover interval
 interval = 20
-if_hg38 = not args.not_hg38
+# if_hg38 = not args.not_hg38
 # if if_hg38_input == "True":
 #     if_hg38 = True
 #if pass_only
@@ -140,25 +140,26 @@ wrong_len = args.wrong_len
 #     wrong_len = True
 if_gt = args.gt_vali
 #chr names
-chr_list = []
-if if_hg38:
-    chr_list = ["chr1", "chr2", "chr3", "chr4", "chr5",
-                "chr6", "chr7", "chr8", "chr9", "chr10",
-                "chr11", "chr12", "chr13", "chr14", "chr15",
-                "chr16", "chr17", "chr18", "chr19", "chr20",
-                "chr21", "chr22", "chrX"]
-else:
-    chr_list = ["1", "2", "3", "4", "5",
-                "6", "7", "8", "9", "10",
-                "11", "12", "13", "14", "15",
-                "16", "17", "18", "19", "20",
-                "21", "22", "X"]
-#approximate length of chromosomes
-chr_len = [250000000, 244000000, 199000000, 192000000, 182000000, 
-            172000000, 160000000, 147000000, 142000000, 136000000, 
-            136000000, 134000000, 116000000, 108000000, 103000000, 
-            90400000, 83300000, 80400000, 59200000, 64500000, 
-            48200000, 51400000, 157000000, 59400000]
+# chr_list = []
+# if if_hg38:
+#     chr_list = ["chr1", "chr2", "chr3", "chr4", "chr5",
+#                 "chr6", "chr7", "chr8", "chr9", "chr10",
+#                 "chr11", "chr12", "chr13", "chr14", "chr15",
+#                 "chr16", "chr17", "chr18", "chr19", "chr20",
+#                 "chr21", "chr22", "chrX"]
+# else:
+#     chr_list = ["1", "2", "3", "4", "5",
+#                 "6", "7", "8", "9", "10",
+#                 "11", "12", "13", "14", "15",
+#                 "16", "17", "18", "19", "20",
+#                 "21", "22", "X"]
+# #approximate length of chromosomes
+# chr_len = [250000000, 244000000, 199000000, 192000000, 182000000, 
+#             172000000, 160000000, 147000000, 142000000, 136000000, 
+#             136000000, 134000000, 116000000, 108000000, 103000000, 
+#             90400000, 83300000, 80400000, 59200000, 64500000, 
+#             48200000, 51400000, 157000000, 59400000]
+
 
 #max/min length of allowed SV not DUP
 memory_limit = 100000
@@ -192,13 +193,28 @@ def main():
         tandem_info = list(reader)
     f.close()  
 
-    #get tandem start and end list
-    tandem_start_list, tandem_end_list = get_align_info.get_chr_tandem_shart_end_list(tandem_info, if_hg38)
-    
     #query asm files and ref fasta file
     query_fasta_file1 = pysam.FastaFile(query_file1)
     query_fasta_file2 = pysam.FastaFile(query_file2)
     ref_fasta_file = pysam.FastaFile(ref_file)
+
+    # guess the autosome names
+    chr_list_cand = ["1", "2", "3", "4", "5",
+                     "6", "7", "8", "9", "10",
+                     "11", "12", "13", "14", "15",
+                     "16", "17", "18", "19", "20",
+                     "21", "22", "X"]
+    chr_list = []
+    chr_len = []
+    for chrn in chr_list_cand:
+        if chrn not in ref_fasta_file.references:
+            chrn = 'chr' + chrn
+        if chrn in ref_fasta_file.references:
+            chr_list.append(chrn)
+            chr_len.append(ref_fasta_file.get_reference_length(chrn))
+    
+    #get tandem start and end list
+    tandem_start_list, tandem_end_list = get_align_info.get_chr_tandem_shart_end_list(tandem_info, chr_list)
 
     ##########################################################
     ##########################################################
@@ -231,9 +247,9 @@ def main():
     #get validation info files
     
     #build map and get validation info on hap1
-    contig_name_list_1, contig_pos_list_1, contig_name_dict_1 = get_align_info.build_map_compress(chr_len, interval, liftover_file1, if_hg38)
+    contig_name_list_1, contig_pos_list_1, contig_name_dict_1 = get_align_info.build_map_compress(chr_len, interval, liftover_file1, chr_list)
     #build map and get validation info on hap2
-    contig_name_list_2, contig_pos_list_2, contig_name_dict_2 = get_align_info.build_map_compress(chr_len, interval, liftover_file2, if_hg38)
+    contig_name_list_2, contig_pos_list_2, contig_name_dict_2 = get_align_info.build_map_compress(chr_len, interval, liftover_file2, chr_list)
     
     #index SVs
     f = pysam.VariantFile(vcf_file,'r')
@@ -299,15 +315,15 @@ def main():
     #third_filter: size
 
     for sv in sv_list:
-        func.second_filter(sv, if_hg38, dict_centromere, exclude_assem1_non_cover, exclude_assem2_non_cover)
+        func.second_filter(sv, dict_centromere, exclude_assem1_non_cover, exclude_assem2_non_cover)
         func.third_filter(sv, memory_min, memory_limit, dup_memory_min, dup_memory_limit)
     
     get_align_info.get_vali_info(output_dir, vcf_file, query_file1, 1, ref_file, interval, 
-              contig_name_list_1, contig_pos_list_1, contig_name_dict_1, memory_limit, if_hg38, chr_list,
+              contig_name_list_1, contig_pos_list_1, contig_name_dict_1, memory_limit, chr_list,
               tandem_start_list, tandem_end_list, tandem_info, sv_list, seq_resolved)
     
     get_align_info.get_vali_info(output_dir, vcf_file, query_file2, 2, ref_file, interval, 
-              contig_name_list_2, contig_pos_list_2, contig_name_dict_2, memory_limit, if_hg38, chr_list,
+              contig_name_list_2, contig_pos_list_2, contig_name_dict_2, memory_limit, chr_list,
               tandem_start_list, tandem_end_list, tandem_info, sv_list, seq_resolved)
     
     #get validation info
@@ -384,15 +400,15 @@ def main():
     #third_filter: size
 
     for sv in chrx_sv_list:
-        func.second_filter_chrx(sv, if_hg38, dict_centromere, exclude_assem1_non_cover, exclude_assem2_non_cover)
+        func.second_filter_chrx(sv, dict_centromere, exclude_assem1_non_cover, exclude_assem2_non_cover)
         func.third_filter(sv, memory_min, memory_limit, dup_memory_min, dup_memory_limit)
     
     get_align_info.get_vali_info(output_dir, vcf_file, query_file1, 1, ref_file, interval, 
-              contig_name_list_1, contig_pos_list_1, contig_name_dict_1, memory_limit, if_hg38, chr_list,
+              contig_name_list_1, contig_pos_list_1, contig_name_dict_1, memory_limit, chr_list,
               tandem_start_list, tandem_end_list, tandem_info, chrx_sv_list, seq_resolved)
     
     get_align_info.get_vali_info(output_dir, vcf_file, query_file2, 2, ref_file, interval, 
-              contig_name_list_2, contig_pos_list_2, contig_name_dict_2, memory_limit, if_hg38, chr_list,
+              contig_name_list_2, contig_pos_list_2, contig_name_dict_2, memory_limit, chr_list,
               tandem_start_list, tandem_end_list, tandem_info, chrx_sv_list, seq_resolved)            
     
     if len(chrx_sv_list) > 0:
@@ -466,7 +482,7 @@ def main():
     #third_filter: size
 
     for sv in sv_list:
-        func.second_filter(sv, if_hg38, dict_centromere, exclude_assem1_non_cover, exclude_assem2_non_cover)
+        func.second_filter(sv, dict_centromere, exclude_assem1_non_cover, exclude_assem2_non_cover)
         func.third_filter(sv, memory_min, memory_limit, dup_memory_min, dup_memory_limit)
 
         
@@ -513,10 +529,10 @@ def main():
     ####################################
     ####################################
 
-    ref_name_list_1, ref_pos_list_1, contig_idx_len_1 = func.build_map_asm_to_ref_compress(query_fasta_file1, liftover_file1_0, interval, if_hg38)
+    ref_name_list_1, ref_pos_list_1, contig_idx_len_1 = func.build_map_asm_to_ref_compress(query_fasta_file1, liftover_file1_0, interval, chr_list)
 
     #get asm to ref mapping
-    ref_name_list_2, ref_pos_list_2, contig_idx_len_2 = func.build_map_asm_to_ref_compress(query_fasta_file2, liftover_file2_0, interval, if_hg38)
+    ref_name_list_2, ref_pos_list_2, contig_idx_len_2 = func.build_map_asm_to_ref_compress(query_fasta_file2, liftover_file2_0, interval, chr_list)
 
     ####################################
     ####################################

@@ -30,10 +30,10 @@ parser.add_argument("tandem_file",
                     help="tandem repeats regions")
 # parser.add_argument("if_hg38_input",
 #                     help="if reference is hg38 or not")
-parser.add_argument("-n",
-                    "--not_hg38",
-                    help="if reference is NOT hg38 (hg19)",
-                    action="store_true")
+# parser.add_argument("-n",
+#                     "--not_hg38",
+#                     help="if reference is NOT hg38 (hg19)",
+#                     action="store_true")
 # parser.add_argument("if_passonly_input",
 #                     help="if consider PASS calls only or not")
 parser.add_argument("-p",
@@ -95,7 +95,7 @@ tandem_file = args.tandem_file
 
 #liftover interval
 interval = 20
-if_hg38 = not args.not_hg38
+# if_hg38 = not args.not_hg38
 # if if_hg38_input == "True":
 #     if_hg38 = True
 #if pass_only
@@ -110,18 +110,37 @@ seq_resolved = args.seq_resolved
 wrong_len = args.wrong_len
 # if wrong_len_input == "True":
 #     wrong_len = True
-#chr names
+# guess the autosome names
+chr_list_cand = ["1", "2", "3", "4", "5",
+                 "6", "7", "8", "9", "10",
+                 "11", "12", "13", "14", "15",
+                 "16", "17", "18", "19", "20",
+                 "21", "22", "X"]
 chr_list = []
-if if_hg38:
-    chr_list = ["chrX"]
-else:
-    chr_list = ["X"]
+chr_len = []
+ref_fasta_file = pysam.FastaFile(ref_file)
+for chrn in chr_list_cand:
+    if chrn not in ref_fasta_file.references:
+        chrn = 'chr' + chrn
+    if chrn in ref_fasta_file.references:
+        chr_list.append(chrn)
+        chr_len.append(ref_fasta_file.get_reference_length(chrn))
+# also guess name chromosome X
+chrx_name = 'X'
+if chrx_name not in chr_list:
+    chrx_name = 'chrX'
+ref_fasta_file.close()
+# chr_list = []
+# if if_hg38:
+#     chr_list = ["chrX"]
+# else:
+#     chr_list = ["X"]
 #approximate length of chromosomes
-chr_len = [250000000, 244000000, 199000000, 192000000, 182000000, 
-            172000000, 160000000, 147000000, 142000000, 136000000, 
-            136000000, 134000000, 116000000, 108000000, 103000000, 
-            90400000, 83300000, 80400000, 59200000, 64500000, 
-            48200000, 51400000, 157000000, 59400000]
+# chr_len = [250000000, 244000000, 199000000, 192000000, 182000000, 
+#             172000000, 160000000, 147000000, 142000000, 136000000, 
+#             136000000, 134000000, 116000000, 108000000, 103000000, 
+#             90400000, 83300000, 80400000, 59200000, 64500000, 
+#             48200000, 51400000, 157000000, 59400000]
 
 #max/min length of allowed SV not DUP
 memory_limit = 100000
@@ -140,7 +159,7 @@ with open(tandem_file) as f:
 f.close()  
 
 #get tandem start and end list
-tandem_start_list, tandem_end_list = get_align_info.get_chr_tandem_shart_end_list(tandem_info, if_hg38)
+tandem_start_list, tandem_end_list = get_align_info.get_chr_tandem_shart_end_list(tandem_info, chr_list)
 
 ##########################################################
 ##########################################################
@@ -184,7 +203,7 @@ def first_filter(sv, sv_type):
             return True
     chr_name = sv.chrom
     #chr filter
-    if chr_name not in chr_list:
+    if chr_name != chrx_name:
         return True
     return False
 
@@ -195,12 +214,8 @@ def second_filter(sv):
     sv_pos = sv.sv_pos
     sv_stop = sv.sv_stop
 
-    if if_hg38:
-        centro_start = int(dict_centromere[ref_name][0])
-        centro_end = int(dict_centromere[ref_name][1])
-    else:
-        centro_start = int(dict_centromere['chr'+ref_name][0])
-        centro_end = int(dict_centromere['chr'+ref_name][1])
+    centro_start = int(dict_centromere[ref_name][0])
+    centro_end = int(dict_centromere[ref_name][1])
 
     #centromere
     if (sv_pos > centro_start and sv_pos < centro_end) or (sv_stop > centro_start and sv_stop < centro_end):
@@ -514,9 +529,9 @@ def main():
     #get validation info files
     
     #build map and get validation info on hap1
-    contig_name_list_1, contig_pos_list_1, contig_name_dict_1 = get_align_info.build_map_compress(chr_len, interval, liftover_file1, if_hg38)
+    contig_name_list_1, contig_pos_list_1, contig_name_dict_1 = get_align_info.build_map_compress(chr_len, interval, liftover_file1, chr_list)
     #build map and get validation info on hap2
-    contig_name_list_2, contig_pos_list_2, contig_name_dict_2 = get_align_info.build_map_compress(chr_len, interval, liftover_file2, if_hg38)
+    contig_name_list_2, contig_pos_list_2, contig_name_dict_2 = get_align_info.build_map_compress(chr_len, interval, liftover_file2, chr_list)
     
     #index SVs
     f = pysam.VariantFile(vcf_file,'r')
@@ -582,11 +597,11 @@ def main():
         third_filter(sv)
     
     get_align_info.get_vali_info(output_dir, vcf_file, query_file1, 1, ref_file, interval, 
-              contig_name_list_1, contig_pos_list_1, contig_name_dict_1, memory_limit, if_hg38, chr_list,
+              contig_name_list_1, contig_pos_list_1, contig_name_dict_1, memory_limit, chr_list,
               tandem_start_list, tandem_end_list, tandem_info, sv_list, seq_resolved)
     
     get_align_info.get_vali_info(output_dir, vcf_file, query_file2, 2, ref_file, interval, 
-              contig_name_list_2, contig_pos_list_2, contig_name_dict_2, memory_limit, if_hg38, chr_list,
+              contig_name_list_2, contig_pos_list_2, contig_name_dict_2, memory_limit, chr_list,
               tandem_start_list, tandem_end_list, tandem_info, sv_list, seq_resolved)
     
     #get validation info

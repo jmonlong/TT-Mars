@@ -32,10 +32,10 @@ parser.add_argument("liftover_file2_0",
                     help="liftover file hap2 asm to ref")
 # parser.add_argument("if_hg38_input",
 #                     help="if reference is hg38 or not")
-parser.add_argument("-n",
-                    "--not_hg38",
-                    help="if reference is NOT hg38 (hg19)",
-                    action="store_true")
+# parser.add_argument("-n",
+#                     "--not_hg38",
+#                     help="if reference is NOT hg38 (hg19)",
+#                     action="store_true")
 # parser.add_argument("if_passonly_input",
 #                     help="if consider PASS calls only or not")
 parser.add_argument("-p",
@@ -136,7 +136,7 @@ reg_dup_upper_len = 10000000
 #liftover interval
 interval = 20
 
-if_hg38 = not args.not_hg38
+# if_hg38 = not args.not_hg38
 # if_hg38 = False
 # if if_hg38_input == "True":
 #     if_hg38 = True
@@ -154,27 +154,28 @@ wrong_len = args.wrong_len
     
 ##################################################################################
 ##################################################################################
-    
+
+## defined later after opening the reference fasta
 #chr names
-chr_list = []
-if if_hg38:
-    chr_list = ["chr1", "chr2", "chr3", "chr4", "chr5",
-                "chr6", "chr7", "chr8", "chr9", "chr10",
-                "chr11", "chr12", "chr13", "chr14", "chr15",
-                "chr16", "chr17", "chr18", "chr19", "chr20",
-                "chr21", "chr22", "chrX"]
-else:
-    chr_list = ["1", "2", "3", "4", "5",
-                "6", "7", "8", "9", "10",
-                "11", "12", "13", "14", "15",
-                "16", "17", "18", "19", "20",
-                "21", "22", "X"]
-#approximate length of chromosomes
-chr_len = [250000000, 244000000, 199000000, 192000000, 182000000, 
-            172000000, 160000000, 147000000, 142000000, 136000000, 
-            136000000, 134000000, 116000000, 108000000, 103000000, 
-            90400000, 83300000, 80400000, 59200000, 64500000, 
-            48200000, 51400000, 157000000, 59400000]
+# chr_list = []
+# if if_hg38:
+#     chr_list = ["chr1", "chr2", "chr3", "chr4", "chr5",
+#                 "chr6", "chr7", "chr8", "chr9", "chr10",
+#                 "chr11", "chr12", "chr13", "chr14", "chr15",
+#                 "chr16", "chr17", "chr18", "chr19", "chr20",
+#                 "chr21", "chr22", "chrX"]
+# else:
+#     chr_list = ["1", "2", "3", "4", "5",
+#                 "6", "7", "8", "9", "10",
+#                 "11", "12", "13", "14", "15",
+#                 "16", "17", "18", "19", "20",
+#                 "21", "22", "X"]
+# #approximate length of chromosomes
+# chr_len = [250000000, 244000000, 199000000, 192000000, 182000000, 
+#             172000000, 160000000, 147000000, 142000000, 136000000, 
+#             136000000, 134000000, 116000000, 108000000, 103000000, 
+#             90400000, 83300000, 80400000, 59200000, 64500000, 
+#             48200000, 51400000, 157000000, 59400000]
 
 #max/min length of allowed SV
 memory_limit = 50000
@@ -189,13 +190,28 @@ with open(tandem_file) as f:
     tandem_info = list(reader)
 f.close()  
 
-#get tandem start and end list
-tandem_start_list, tandem_end_list = get_align_info.get_chr_tandem_shart_end_list(tandem_info, if_hg38)
-
 #query asm files and ref fasta file
 query_fasta_file1 = pysam.FastaFile(query_file1)
 query_fasta_file2 = pysam.FastaFile(query_file2)
 ref_fasta_file = pysam.FastaFile(ref_file)
+
+# guess the autosome names
+chr_list_cand = ["1", "2", "3", "4", "5",
+                 "6", "7", "8", "9", "10",
+                 "11", "12", "13", "14", "15",
+                 "16", "17", "18", "19", "20",
+                 "21", "22", "X"]
+chr_list = []
+for chrn in chr_list_cand:
+    if chrn not in ref_fasta_file.references:
+        chrn = 'chr' + chrn
+    if chrn in ref_fasta_file.references:
+        chr_list.append(chrn)
+
+#get tandem start and end list
+tandem_start_list, tandem_end_list = get_align_info.get_chr_tandem_shart_end_list(tandem_info, chr_list)
+
+
 
 ##################################################################################
 ##################################################################################
@@ -222,12 +238,8 @@ def second_filter(sv):
     sv_pos = sv.sv_pos
     sv_stop = sv.sv_stop
 
-    if if_hg38:
-        centro_start = int(dict_centromere[ref_name][0])
-        centro_end = int(dict_centromere[ref_name][1])
-    else:
-        centro_start = int(dict_centromere['chr'+ref_name][0])
-        centro_end = int(dict_centromere['chr'+ref_name][1])
+    centro_start = int(dict_centromere[ref_name][0])
+    centro_end = int(dict_centromere[ref_name][1])
 
     #centromere
     if (sv_pos > centro_start and sv_pos < centro_end) or (sv_stop > centro_start and sv_stop < centro_end):
@@ -518,7 +530,7 @@ def build_map_asm_to_ref(query_fasta_file, liftover_file):
         pre_contig_name = ""
         for line in f:
             record = line.strip().split()
-            int_ref_name = get_align_info.get_int_chr_name(record[0], if_hg38)
+            int_ref_name = get_align_info.get_int_chr_name(record[0], chr_list)
             contig_pos = int(record[5])
             ref_pos = int(record[1])
 
@@ -554,7 +566,7 @@ def build_map_asm_to_ref_compress(query_fasta_file, liftover_file):
         pre_contig_name = ""
         for line in f:
             record = line.strip().split()
-            int_ref_name = get_align_info.get_int_chr_name(record[1], if_hg38)
+            int_ref_name = get_align_info.get_int_chr_name(record[1], chr_list)
             contig_name = record[0]
             contig_idx = contig_idx_len[contig_name][0]
 

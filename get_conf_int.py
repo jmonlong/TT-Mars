@@ -8,11 +8,11 @@ import pybedtools
 #TODO: optimize SV filters
 
 #Get regions on ref where its not covered by at least one of the assembly
-def get_non_cover_regions(output_dir, assem_bam_file, hap, chr_list):
+def get_non_cover_regions(output_dir, assem_bam_file, hap):
     #hap is an int = 1/2
     samfile = pysam.AlignmentFile(assem_bam_file, "rb")
     g = open(output_dir + "assem" + str(hap) + "_non_cov_regions.bed", "w")
-    for chr_name in chr_list:
+    for chr_name in list(samfile.references):
         #test
         #print(chr_name)
         #stop when parsed no_of_reads
@@ -121,7 +121,6 @@ def main():
     #assembly bam file
     bam_file1 = sys.argv[2]
     bam_file2 = sys.argv[3]
-    if_hg38_str = sys.argv[4]
 #     #if_hg38 = True
 #     avg_read_depth = sys.argv[5]
 #     #reads bam file
@@ -130,28 +129,28 @@ def main():
 #     vcf_file = sys.argv[7]
     
     #constants
-    if if_hg38_str == "True":
-        if_hg38 = True
-    else:
-        if_hg38 = False 
+    # if if_hg38_str == "True":
+    #     if_hg38 = True
+    # else:
+    #     if_hg38 = False 
     
-    chr_list = []
-    if if_hg38:
-        chr_list = ["chr1", "chr2", "chr3", "chr4", "chr5",
-                    "chr6", "chr7", "chr8", "chr9", "chr10",
-                    "chr11", "chr12", "chr13", "chr14", "chr15",
-                    "chr16", "chr17", "chr18", "chr19", "chr20",
-                    "chr21", "chr22", "chrX"]
-    else:
-        chr_list = ["1", "2", "3", "4", "5",
-                    "6", "7", "8", "9", "10",
-                    "11", "12", "13", "14", "15",
-                    "16", "17", "18", "19", "20",
-                    "21", "22", "X"]
+    # chr_list = []
+    # if if_hg38:
+    #     chr_list = ["chr1", "chr2", "chr3", "chr4", "chr5",
+    #                 "chr6", "chr7", "chr8", "chr9", "chr10",
+    #                 "chr11", "chr12", "chr13", "chr14", "chr15",
+    #                 "chr16", "chr17", "chr18", "chr19", "chr20",
+    #                 "chr21", "chr22", "chrX"]
+    # else:
+    #     chr_list = ["1", "2", "3", "4", "5",
+    #                 "6", "7", "8", "9", "10",
+    #                 "11", "12", "13", "14", "15",
+    #                 "16", "17", "18", "19", "20",
+    #                 "21", "22", "X"]
     
     #Output regions on ref where its not covered by at least one of the assembly
-    get_non_cover_regions(output_dir, bam_file1, 1, chr_list)
-    get_non_cover_regions(output_dir, bam_file2, 2, chr_list)
+    get_non_cover_regions(output_dir, bam_file1, 1)
+    get_non_cover_regions(output_dir, bam_file2, 2)
     
     #Output sv positions
 #     get_sv_positions(output_dir, vcf_file)

@@ -82,13 +82,14 @@ except:
 if output_fn:
     #input truth set
     sv_list = fn.idx_sv(in_truth_file)
+    chr_list = fn.get_chr_list(sv_list)
     #input candidate set
-    cand_sv_list = fn.idx_sv(in_vcf_file)
+    cand_sv_list = fn.idx_sv(in_vcf_file, chr_list)
 
-    sv_list_sorted = fn.sort_sv_list(sv_list)
-    cand_sv_list_sorted = fn.sort_sv_list(cand_sv_list)
+    sv_list_sorted = fn.sort_sv_list(sv_list, chr_list)
+    cand_sv_list_sorted = fn.sort_sv_list(cand_sv_list, chr_list)
 
-    tp_base_ctr = fn.count_tp_base_dist_only(sv_list_sorted, cand_sv_list_sorted)
+    tp_base_ctr = fn.count_tp_base_dist_only(sv_list_sorted, cand_sv_list_sorted, chr_list)
     recall = tp_base_ctr / len(sv_list_sorted)
     
     print("Recall of candidate callset: " + str(recall))

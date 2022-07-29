@@ -82,30 +82,15 @@ def write_err(output_file_name, message):
     f.write("\n")
     f.close()
     
-#return chr name as an integer
-#X = 23, Y = 24
-def get_int_chr_name(name, if_hg38):
-    #remove "chr"
-    if if_hg38:
-        chr_name = name[3:]
-    else:
-        chr_name = name
-    
-    if chr_name.upper() == 'X':
-        int_name = 23
-    elif chr_name.upper() == 'Y':
-        int_name = 24
-    else:
-        int_name = int(chr_name)
-        
-    return int_name
+#return chr name as an integer (its position in the chr list)
+def get_int_chr_name(name, chr_list):
+    return chr_list.index(name)
     
 #build map
-def build_map(chr_len, interval, liftover_file, if_hg38):
+def build_map(chr_len, interval, liftover_file, chr_list):
     contig_name_list = []
     contig_pos_list = []
-    for i in range(1, 25):
-        lo_length = chr_len[i-1]
+    for lo_length in chr_len:
         #set the initial values to -1
         contig_name_list.append(np.zeros(int(lo_length/interval) + 1, dtype='int16') - 1)
         contig_pos_list.append(np.zeros(int(lo_length/interval) + 1, dtype='uint32'))
@@ -119,7 +104,7 @@ def build_map(chr_len, interval, liftover_file, if_hg38):
         for line in f:
             record = line.strip().split()
             
-            int_ref_name = get_int_chr_name(record[4], if_hg38)
+            int_ref_name = get_int_chr_name(record[4], chr_list)
             ref_pos = int(record[5])
             contig_pos = int(record[1])
 
@@ -141,11 +126,10 @@ def build_map(chr_len, interval, liftover_file, if_hg38):
     f.close()
     return contig_name_list, contig_pos_list, contig_name_dict
 
-def build_map_compress(chr_len, interval, liftover_file, if_hg38):
+def build_map_compress(chr_len, interval, liftover_file, chr_list):
     contig_name_list = []
     contig_pos_list = []
-    for i in range(1, 25):
-        lo_length = chr_len[i-1]
+    for lo_length in chr_len:
         #set the initial values to -1
         contig_name_list.append(np.zeros(int(lo_length/interval) + 1, dtype='int16') - 1)
         contig_pos_list.append(np.zeros(int(lo_length/interval) + 1, dtype='uint32'))
@@ -158,7 +142,7 @@ def build_map_compress(chr_len, interval, liftover_file, if_hg38):
         pre_contig_name = ""
         for line in f:
             record = line.strip().split()
-            int_ref_name = get_int_chr_name(record[0], if_hg38)
+            int_ref_name = get_int_chr_name(record[0], chr_list)
             #store contig name in a dict to save memory
             contig_name = record[1]
             if contig_name != pre_contig_name:
@@ -214,27 +198,27 @@ def inversion_seq(seq):
     return inverted_seq
 
 #get different chromosomes' tandem regions start/end index
-def get_chr_tandem_shart_end_list(tandem_info, if_hg38):
-    start_list = [0] * 24
-    end_list = [0] * 24
+def get_chr_tandem_shart_end_list(tandem_info, chr_list):
+    start_list = [0] * len(chr_list)
+    end_list = [0] * len(chr_list)
     
     cur_chr = tandem_info[0][0]
 #     print(tandem_info[chr_index_ctr][0], " start ", chr_index_ctr)
-    start_list[get_int_chr_name(cur_chr, if_hg38) - 1] = 0
+    start_list[get_int_chr_name(cur_chr, chr_list) - 1] = 0
     for i, rec in enumerate(tandem_info[1:]):
         if rec[0] != cur_chr:
 #             print(cur_chr, " end ", i-1)
-            end_list[get_int_chr_name(cur_chr, if_hg38) - 1] = i-1
+            end_list[get_int_chr_name(cur_chr, chr_list) - 1] = i-1
             cur_chr = rec[0]
 #             print(cur_chr, " start ", i)
-            start_list[get_int_chr_name(cur_chr, if_hg38) - 1] = i
+            start_list[get_int_chr_name(cur_chr, chr_list) - 1] = i
 #     print(cur_chr, " end ", len(tandem_info)-1)
-    end_list[get_int_chr_name(cur_chr, if_hg38) - 1] = len(tandem_info)-1
+    end_list[get_int_chr_name(cur_chr, chr_list) - 1] = len(tandem_info)-1
     return start_list, end_list
 
 #check if in tandem repeats regions
-def ol_tandem(ref_name, sv_pos, sv_stop, tandem_start_list, tandem_end_list, if_hg38, tandem_info):
-    ref_idx = get_int_chr_name(ref_name, if_hg38)
+def ol_tandem(ref_name, sv_pos, sv_stop, tandem_start_list, tandem_end_list, chr_list, tandem_info):
+    ref_idx = get_int_chr_name(ref_name, chr_list)
     tandem_start_idx = tandem_start_list[ref_idx - 1]
     tandem_end_idx = tandem_end_list[ref_idx - 1]
     
@@ -253,11 +237,11 @@ def ol_tandem(ref_name, sv_pos, sv_stop, tandem_start_list, tandem_end_list, if_
     
     return [tandem_region_sv_start, tandem_region_sv_end]
 
-def get_intervals(sv, cur_ref_name, ref_fasta_file, tandem_start_list, tandem_end_list, if_hg38, tandem_info, interval, memory_limit, contig_name_list, contig_pos_list, contig_name_dict, hap, ref_rec):
+def get_intervals(sv, cur_ref_name, ref_fasta_file, tandem_start_list, tandem_end_list, chr_list, tandem_info, interval, memory_limit, contig_name_list, contig_pos_list, contig_name_dict, hap, ref_rec):
     if sv.sv_type in ['INS', 'DEL', 'DUP:TANDEM', 'DUP']:
         region_len_m = 500
         
-        check_tandem = ol_tandem(sv.ref_name, sv.sv_pos, sv.sv_stop, tandem_start_list, tandem_end_list, if_hg38, tandem_info)
+        check_tandem = ol_tandem(sv.ref_name, sv.sv_pos, sv.sv_stop, tandem_start_list, tandem_end_list, chr_list, tandem_info)
         if check_tandem[0] != -1:
             ref_start_start = max(getRefStart(int(tandem_info[check_tandem[0]][1]), interval) - region_len_m, 0)
             ref_start_end = getRefStart(sv.sv_pos, interval)
@@ -280,7 +264,7 @@ def get_intervals(sv, cur_ref_name, ref_fasta_file, tandem_start_list, tandem_en
                 ref_end_end = min(getRefEnd(sv.sv_stop, interval) + region_len_m, getRefEnd(len(ref_rec), interval) - interval)
 
         #first level key: chr index as an int
-        int_ref_name = get_int_chr_name(sv.ref_name, if_hg38)
+        int_ref_name = get_int_chr_name(sv.ref_name, chr_list)
         lo_list_index = int_ref_name - 1
         first_key = lo_list_index
 
@@ -384,7 +368,7 @@ def get_intervals(sv, cur_ref_name, ref_fasta_file, tandem_start_list, tandem_en
     elif sv.sv_type == 'INV':
         region_len = 200
 
-        check_tandem = ol_tandem(sv.ref_name, sv.sv_pos, sv.sv_stop, tandem_start_list, tandem_end_list, if_hg38, tandem_info)
+        check_tandem = ol_tandem(sv.ref_name, sv.sv_pos, sv.sv_stop, tandem_start_list, tandem_end_list, chr_list, tandem_info)
         if check_tandem[0] != -1:
             ref_start = getRefStart(int(tandem_info[check_tandem[0]][1]), interval)
         else:
@@ -398,7 +382,7 @@ def get_intervals(sv, cur_ref_name, ref_fasta_file, tandem_start_list, tandem_en
 #         ref_end = getRefEnd(sv_stop, interval)
 
         #first level key: chr index as an int
-        int_ref_name = get_int_chr_name(sv.ref_name, if_hg38)
+        int_ref_name = get_int_chr_name(sv.ref_name, chr_list)
         lo_list_index = int_ref_name - 1
         first_key = lo_list_index
 
@@ -462,11 +446,11 @@ def get_intervals(sv, cur_ref_name, ref_fasta_file, tandem_start_list, tandem_en
         return True
 
 #for calls large than memory_limit
-def get_large_intervals(sv, cur_ref_name, ref_fasta_file, tandem_start_list, tandem_end_list, if_hg38, tandem_info, interval, memory_limit, contig_name_list, contig_pos_list, contig_name_dict, hap, ref_rec):
+def get_large_intervals(sv, cur_ref_name, ref_fasta_file, tandem_start_list, tandem_end_list, chr_list, tandem_info, interval, memory_limit, contig_name_list, contig_pos_list, contig_name_dict, hap, ref_rec):
         region_len = int(0.5 * abs(sv.length))
         #region_len = 200
 
-        check_tandem = ol_tandem(sv.ref_name, sv.sv_pos, sv.sv_stop, tandem_start_list, tandem_end_list, if_hg38, tandem_info)
+        check_tandem = ol_tandem(sv.ref_name, sv.sv_pos, sv.sv_stop, tandem_start_list, tandem_end_list, chr_list, tandem_info)
         if check_tandem[0] != -1:
             ref_start = getRefStart(int(tandem_info[check_tandem[0]][1]), interval)
         else:
@@ -480,7 +464,7 @@ def get_large_intervals(sv, cur_ref_name, ref_fasta_file, tandem_start_list, tan
 #         ref_end = getRefEnd(sv_stop, interval)
 
         #first level key: chr index as an int
-        int_ref_name = get_int_chr_name(sv.ref_name, if_hg38)
+        int_ref_name = get_int_chr_name(sv.ref_name, chr_list)
         lo_list_index = int_ref_name - 1
         first_key = lo_list_index
 
@@ -638,7 +622,7 @@ def align_before_after(output_dir, sv, query_seq, ref_seq_1, ref_seq_2):
     
 #get vcf file and run score_callset on each SV record
 def get_vali_info(output_dir, vcf_file, query_file, hap, ref_file, interval, 
-                  contig_name_list, contig_pos_list, contig_name_dict, memory_limit, if_hg38, chr_list,
+                  contig_name_list, contig_pos_list, contig_name_dict, memory_limit, chr_list,
                   tandem_start_list, tandem_end_list, tandem_info, sv_list, seq_resolved):
     #query_file = query_file2
     #hap = 2
@@ -666,11 +650,11 @@ def get_vali_info(output_dir, vcf_file, query_file, hap, ref_file, interval,
         #filtered by size
         if not sv.is_third_fil:
             #Search for the best second_key_start and second_key_end in the regions
-            if not get_intervals(sv, cur_ref_name, ref_fasta_file, tandem_start_list, tandem_end_list, if_hg38, tandem_info, interval, memory_limit, contig_name_list, contig_pos_list, contig_name_dict, hap, ref_rec):
+            if not get_intervals(sv, cur_ref_name, ref_fasta_file, tandem_start_list, tandem_end_list, chr_list, tandem_info, interval, memory_limit, contig_name_list, contig_pos_list, contig_name_dict, hap, ref_rec):
                 continue
         else:
             #get the intervals, won't search 
-            if not get_large_intervals(sv, cur_ref_name, ref_fasta_file, tandem_start_list, tandem_end_list, if_hg38, tandem_info, interval, memory_limit, contig_name_list, contig_pos_list, contig_name_dict, hap, ref_rec):
+            if not get_large_intervals(sv, cur_ref_name, ref_fasta_file, tandem_start_list, tandem_end_list, chr_list, tandem_info, interval, memory_limit, contig_name_list, contig_pos_list, contig_name_dict, hap, ref_rec):
                 continue
         
         if hap == 1:
@@ -866,35 +850,51 @@ def main():
     query_file2 = sys.argv[5]
     liftover_file1 = sys.argv[6]
     liftover_file2 = sys.argv[7]
-    if_hg38_input = sys.argv[8]
+    deprecated_input_to_rm = sys.argv[8]
     tandem_file = sys.argv[9]
 
-    #constants
-    if_hg38 = False
-    if if_hg38_input == "True":
-        if_hg38 = True
-    #chr names
+    # guess the autosome names
+    chr_list_cand = ["1", "2", "3", "4", "5",
+                     "6", "7", "8", "9", "10",
+                     "11", "12", "13", "14", "15",
+                     "16", "17", "18", "19", "20",
+                     "21", "22", "X"]
     chr_list = []
-    if if_hg38:
-        chr_list = ["chr1", "chr2", "chr3", "chr4", "chr5",
-                    "chr6", "chr7", "chr8", "chr9", "chr10",
-                    "chr11", "chr12", "chr13", "chr14", "chr15",
-                    "chr16", "chr17", "chr18", "chr19", "chr20",
-                    "chr21", "chr22", "chrX"]
-    else:
-        chr_list = ["1", "2", "3", "4", "5",
-                    "6", "7", "8", "9", "10",
-                    "11", "12", "13", "14", "15",
-                    "16", "17", "18", "19", "20",
-                    "21", "22", "X"]
+    chr_len = []
+    ref_fasta_file = pysam.FastaFile(ref_file)
+    for chrn in chr_list_cand:
+        if chrn not in ref_fasta_file.references:
+            chrn = 'chr' + chrn
+        if chrn in ref_fasta_file.references:
+            chr_list.append(chrn)
+            chr_len.append(ref_fasta_file.get_reference_length(chrn))
+    ref_fasta_file.close()
+    #constants
+    # if_hg38 = False
+    # if if_hg38_input == "True":
+    #     if_hg38 = True
+    # #chr names
+    # chr_list = []
+    # if if_hg38:
+    #     chr_list = ["chr1", "chr2", "chr3", "chr4", "chr5",
+    #                 "chr6", "chr7", "chr8", "chr9", "chr10",
+    #                 "chr11", "chr12", "chr13", "chr14", "chr15",
+    #                 "chr16", "chr17", "chr18", "chr19", "chr20",
+    #                 "chr21", "chr22", "chrX"]
+    # else:
+    #     chr_list = ["1", "2", "3", "4", "5",
+    #                 "6", "7", "8", "9", "10",
+    #                 "11", "12", "13", "14", "15",
+    #                 "16", "17", "18", "19", "20",
+    #                 "21", "22", "X"]
     #interval length
     interval = 20
     #approximate length of chromosomes
-    chr_len = [250000000, 244000000, 199000000, 192000000, 182000000, 
-                172000000, 160000000, 147000000, 142000000, 136000000, 
-                136000000, 134000000, 116000000, 108000000, 103000000, 
-                90400000, 83300000, 80400000, 59200000, 64500000, 
-                48200000, 51400000, 157000000, 59400000]
+    # chr_len = [250000000, 244000000, 199000000, 192000000, 182000000, 
+    #             172000000, 160000000, 147000000, 142000000, 136000000, 
+    #             136000000, 134000000, 116000000, 108000000, 103000000, 
+    #             90400000, 83300000, 80400000, 59200000, 64500000, 
+    #             48200000, 51400000, 157000000, 59400000]
     #max length of allowed alignment
     memory_limit = 50000
 
@@ -905,18 +905,18 @@ def main():
     f.close()    
     
     #get tandem start and end list
-    tandem_start_list, tandem_end_list = get_chr_tandem_shart_end_list(tandem_info, if_hg38)
+    tandem_start_list, tandem_end_list = get_chr_tandem_shart_end_list(tandem_info, chr_list)
      
     #build map and get validation info haplotype 1
-    contig_name_list, contig_pos_list, contig_name_dict = build_map(chr_len, interval, liftover_file1, if_hg38)
+    contig_name_list, contig_pos_list, contig_name_dict = build_map(chr_len, interval, liftover_file1, chr_list)
     get_vali_info(output_dir, vcf_file, query_file1, 1, ref_file, interval, 
-                  contig_name_list, contig_pos_list, contig_name_dict, memory_limit, if_hg38, chr_list,
+                  contig_name_list, contig_pos_list, contig_name_dict, memory_limit, chr_list,
                   tandem_start_list, tandem_end_list, tandem_info)
     
     #build map and get validation info haplotype 2
-    contig_name_list, contig_pos_list, contig_name_dict = build_map(chr_len, interval, liftover_file2, if_hg38)
+    contig_name_list, contig_pos_list, contig_name_dict = build_map(chr_len, interval, liftover_file2, chr_list)
     get_vali_info(output_dir, vcf_file, query_file2, 2, ref_file, interval, 
-                  contig_name_list, contig_pos_list, contig_name_dict, memory_limit, if_hg38, chr_list,
+                  contig_name_list, contig_pos_list, contig_name_dict, memory_limit, chr_list,
                   tandem_start_list, tandem_end_list, tandem_info)
     
 

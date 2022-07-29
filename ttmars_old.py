@@ -589,11 +589,11 @@ def main():
         third_filter(sv)
     
     get_align_info.get_vali_info(output_dir, vcf_file, query_file1, 1, ref_file, interval, 
-              contig_name_list_1, contig_pos_list_1, contig_name_dict_1, memory_limit, if_hg38, chr_list,
+              contig_name_list_1, contig_pos_list_1, contig_name_dict_1, memory_limit, chr_list,
               tandem_start_list, tandem_end_list, tandem_info, sv_list, seq_resolved)
     
     get_align_info.get_vali_info(output_dir, vcf_file, query_file2, 2, ref_file, interval, 
-              contig_name_list_2, contig_pos_list_2, contig_name_dict_2, memory_limit, if_hg38, chr_list,
+              contig_name_list_2, contig_pos_list_2, contig_name_dict_2, memory_limit, chr_list,
               tandem_start_list, tandem_end_list, tandem_info, sv_list, seq_resolved)
     
     #get validation info

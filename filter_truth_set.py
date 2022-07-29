@@ -80,10 +80,10 @@ def filter_dipcall_for_fn_trimcoor(bcf_in_file, asm1_trimmed_file, asm2_trimmed_
 def main():
     #hg38 samples
     sample_names = ["HG00096", "HG01505", "HG01596", "HG03009", "HG00731", "HG00171", "HG00864", "HG01114", "HG00513", "HG00732"]
-    chr_list = ['chr1','chr2','chr3','chr4','chr5','chr6','chr7',
-                'chr8','chr9','chr10','chr11','chr12','chr13','chr14',
-                'chr15','chr16','chr17','chr18','chr19','chr20','chr21',
-                'chr22','chrX']
+    # chr_list = ['chr1','chr2','chr3','chr4','chr5','chr6','chr7',
+    #             'chr8','chr9','chr10','chr11','chr12','chr13','chr14',
+    #             'chr15','chr16','chr17','chr18','chr19','chr20','chr21',
+    #             'chr22','chrX']
 
     truth_sv_size_lb = 50
 

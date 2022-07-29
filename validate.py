@@ -130,10 +130,10 @@ def check_tp(rela_len, rela_score, sv_type):
     return result
 
 # build dictionary for validation
-def updateDict(dict_score, align_info, exclude_assem1_non_cover, exclude_assem2_non_cover, dict_centromere, chr_list, if_hg38):
+def updateDict(dict_score, align_info, exclude_assem1_non_cover, exclude_assem2_non_cover, dict_centromere):
     for record in align_info:
         #len > 30
-        if int(record[3]) > 0 and abs(int(record[8])) > 30 and str(record[9]) in chr_list:
+        if int(record[3]) > 0 and abs(int(record[8])) > 30 and str(record[9]) in dict_centromere:
 #         if int(record[3]) > 0 and abs(int(record[8])) >= 10 and abs(int(record[8])) <= 30 and str(record[9]) in chr_list:
             #filter out centromere cases
             index = str(record[0])
@@ -142,13 +142,9 @@ def updateDict(dict_score, align_info, exclude_assem1_non_cover, exclude_assem2_
             ref_start = int(record[12])
             ref_end = int(record[13])
 
-            if if_hg38:
-                centro_start = int(dict_centromere[ref_name][0])
-                centro_end = int(dict_centromere[ref_name][1])
-            else:
-                centro_start = int(dict_centromere['chr'+ref_name][0])
-                centro_end = int(dict_centromere['chr'+ref_name][1])
-
+            centro_start = int(dict_centromere[ref_name][0])
+            centro_end = int(dict_centromere[ref_name][1])
+            
             #if SV in the exclude_list: start or end of a contig
             sv_pos = int(record[10])
             sv_end = int(record[11])
@@ -216,7 +212,7 @@ def updateDict(dict_score, align_info, exclude_assem1_non_cover, exclude_assem2_
     return dict_score
 
 #validate by both haplotypes
-def vali_info(output_dir, exclude_assem1_non_cover, exclude_assem2_non_cover, assem1_info_file, assem2_info_file, dict_centromere, chr_list, if_hg38):
+def vali_info(output_dir, exclude_assem1_non_cover, exclude_assem2_non_cover, assem1_info_file, assem2_info_file, dict_centromere):
     with open(output_dir + assem1_info_file) as f:
         reader = csv.reader(f, delimiter="\t")
         align_info_assem1 = list(reader)
@@ -228,8 +224,8 @@ def vali_info(output_dir, exclude_assem1_non_cover, exclude_assem2_non_cover, as
     f.close()
 
     dict_comb = dict()
-    dict_comb = updateDict(dict_comb, align_info_assem1, exclude_assem1_non_cover, exclude_assem2_non_cover, dict_centromere, chr_list, if_hg38)
-    dict_comb = updateDict(dict_comb, align_info_assem2, exclude_assem1_non_cover, exclude_assem2_non_cover, dict_centromere, chr_list, if_hg38)
+    dict_comb = updateDict(dict_comb, align_info_assem1, exclude_assem1_non_cover, exclude_assem2_non_cover, dict_centromere)
+    dict_comb = updateDict(dict_comb, align_info_assem2, exclude_assem1_non_cover, exclude_assem2_non_cover, dict_centromere)
 
     return dict_comb
 
@@ -264,7 +260,7 @@ def write_output(output_dir, dict_comb):
 def main():
     #input
     output_dir = sys.argv[1] + "/"
-    if_hg38_input = sys.argv[2]
+    deprecated_input_to_rm = sys.argv[2]
     centromere_file = sys.argv[3]
     #exclude_assem1_non_cover_file = sys.argv[4]
     #exclude_assem2_non_cover_file = sys.argv[5]
@@ -272,22 +268,22 @@ def main():
     
     #constants
     interval = 20
-    if_hg38 = False
-    if if_hg38_input == "True":
-        if_hg38 = True
-    chr_list = []
-    if if_hg38:
-        chr_list = ["chr1", "chr2", "chr3", "chr4", "chr5",
-                    "chr6", "chr7", "chr8", "chr9", "chr10",
-                    "chr11", "chr12", "chr13", "chr14", "chr15",
-                    "chr16", "chr17", "chr18", "chr19", "chr20",
-                    "chr21", "chr22", "chrX", "chrY"]
-    else:
-        chr_list = ["1", "2", "3", "4", "5",
-                    "6", "7", "8", "9", "10",
-                    "11", "12", "13", "14", "15",
-                    "16", "17", "18", "19", "20",
-                    "21", "22", "X", "Y"]
+    # if_hg38 = False
+    # if if_hg38_input == "True":
+    #     if_hg38 = True
+    # chr_list = []
+    # if if_hg38:
+    #     chr_list = ["chr1", "chr2", "chr3", "chr4", "chr5",
+    #                 "chr6", "chr7", "chr8", "chr9", "chr10",
+    #                 "chr11", "chr12", "chr13", "chr14", "chr15",
+    #                 "chr16", "chr17", "chr18", "chr19", "chr20",
+    #                 "chr21", "chr22", "chrX", "chrY"]
+    # else:
+    #     chr_list = ["1", "2", "3", "4", "5",
+    #                 "6", "7", "8", "9", "10",
+    #                 "11", "12", "13", "14", "15",
+    #                 "16", "17", "18", "19", "20",
+    #                 "21", "22", "X", "Y"]
         
     #build centromere dictionary
     dict_centromere = build_centro_dict(centromere_file)
@@ -302,9 +298,7 @@ def main():
                           exclude_assem2_non_cover, 
                           "align_info_assem1_chrall.txt",
                           "align_info_assem2_chrall.txt", 
-                          dict_centromere, 
-                          chr_list, 
-                          if_hg38)
+                          dict_centromere)
     
     #write output
     write_output(output_dir, dict_comb)

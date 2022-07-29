@@ -1,5 +1,7 @@
 from pysam import VariantFile
 
+import filter_truth_set
+
 #CONST
 ###########################################################
 #fn const
@@ -9,11 +11,11 @@ ratio_size_lb = 0.7
 
 ###########################################################
 #ttmars const
-chr_list = ["chr1", "chr2", "chr3", "chr4", "chr5",
-            "chr6", "chr7", "chr8", "chr9", "chr10",
-            "chr11", "chr12", "chr13", "chr14", "chr15",
-            "chr16", "chr17", "chr18", "chr19", "chr20",
-            "chr21", "chr22", "chrX"]
+# chr_list = ["chr1", "chr2", "chr3", "chr4", "chr5",
+#             "chr6", "chr7", "chr8", "chr9", "chr10",
+#             "chr11", "chr12", "chr13", "chr14", "chr15",
+#             "chr16", "chr17", "chr18", "chr19", "chr20",
+#             "chr21", "chr22", "chrX"]
 
 memory_limit = 100000
 memory_min = 10
@@ -24,12 +26,12 @@ valid_types = ['DEL', 'INS', 'INV', 'DUP:TANDEM', 'DUP']
 if_pass_only = True
 wrong_len = False
 gt_vali = False
-if_hg38 = True
+# if_hg38 = True
 
 ###########################################################
 
 #first_filter: type, PASS, chr_name
-def first_filter(sv, sv_type):
+def first_filter(sv, sv_type, chr_list=[]):
     #type filter
     if sv_type not in valid_types:
         return True
@@ -39,7 +41,7 @@ def first_filter(sv, sv_type):
             return True
     chr_name = sv.chrom
     #chr filter
-    if chr_name not in chr_list:
+    if (len(chr_list) > 0) and (chr_name not in chr_list):
         return True
     return False
 
@@ -239,7 +241,7 @@ class struc_var:
                     return (res_hap2, rela_len_2, rela_score_2, gt_validate)
                 
                 
-def idx_sv(input_vcf):
+def idx_sv(input_vcf, chr_list=[]):
     f = VariantFile(input_vcf,'r')
     sv_list = []
     for count, rec in enumerate(f.fetch()):
@@ -250,7 +252,7 @@ def idx_sv(input_vcf):
             print("invalid sv type info")
             continue
 
-        if first_filter(rec, sv_type):
+        if first_filter(rec, sv_type, chr_list):
             continue
 
         #get sv length
@@ -290,12 +292,18 @@ def idx_sv(input_vcf):
     #         raise Exception("Wrong number of sample genotype(s)")
     #     gts = [s['GT'] for s in rec.samples.values()] 
 
-        sv_list.append(struc_var(count, rec.chrom, sv_type, rec.pos, rec.stop, sv_len, sv_gt))   
+        sv_list.append(struc_var(count, rec.chrom, sv_type, rec.pos, rec.stop, sv_len, sv_gt))
 
     f.close()
     
     return sv_list
 
+def get_chr_list(sv_list):
+    chr_list = {}
+    for sv in sv_list:
+        if sv.ref_name not in chr_list:
+            chr_list[sv.ref_name] = True
+    return chr_list.keys()
 
 # merge close SVs
 def merge_sv(sv_list):
@@ -357,16 +365,14 @@ def match_sv(base_sv, cand_sv):
     return True
 
 #index chr name: chr1-chrX: 1-23
-def idx_chr_name(chr_name):
-    if not if_hg38:
-        chr_name = 'chr' + chr_name
-    return chr_list.index(chr_name) + 1
+def idx_chr_name(chr_name, chr_list):
+    return chr_list.index(chr_name)
 
 #compare two sv position
 #return T if sv1 is before sv2
-def compare_sv_positions(sv1, sv2):
-    sv1_chr_idx = idx_chr_name(sv1.ref_name)
-    sv2_chr_idx = idx_chr_name(sv2.ref_name)
+def compare_sv_positions(sv1, sv2, chr_list):
+    sv1_chr_idx = idx_chr_name(sv1.ref_name, chr_list)
+    sv2_chr_idx = idx_chr_name(sv2.ref_name, chr_list)
     
     if sv1_chr_idx < sv2_chr_idx:
         return True
@@ -379,13 +385,13 @@ def compare_sv_positions(sv1, sv2):
         return False
     
 #merge 2 sorted sv_list
-def merge_sv_list(sv_list1, sv_list2):
+def merge_sv_list(sv_list1, sv_list2, chr_list):
     merged_list = []
     ptr1 = 0
     ptr2 = 0
     
     while(True):
-        if compare_sv_positions(sv_list1[ptr1], sv_list2[ptr2]):
+        if compare_sv_positions(sv_list1[ptr1], sv_list2[ptr2], chr_list):
             merged_list.append(sv_list1[ptr1])
             ptr1 += 1
         else:
@@ -405,7 +411,7 @@ def merge_sv_list(sv_list1, sv_list2):
     return merged_list
 
 #sort SV list by chr and start pos
-def sort_sv_list(sv_list):
+def sort_sv_list(sv_list, chr_list):
     if len(sv_list) == 0:
         return sv_list
     
@@ -413,17 +419,17 @@ def sort_sv_list(sv_list):
         return sv_list
     
     if len(sv_list) == 2:
-        if compare_sv_positions(sv_list[0], sv_list[1]):
+        if compare_sv_positions(sv_list[0], sv_list[1], chr_list):
             return sv_list
         else:
             return [sv_list[1], sv_list[0]]
     
     mid_pt = len(sv_list)//2
-    sorted_sv_list = merge_sv_list(sort_sv_list(sv_list[:mid_pt]), sort_sv_list(sv_list[mid_pt:]))
+    sorted_sv_list = merge_sv_list(sort_sv_list(sv_list[:mid_pt], chr_list), sort_sv_list(sv_list[mid_pt:], chr_list), chr_list)
     return sorted_sv_list
     
     
-def count_tp_base(merged_sv_list_sorted, cand_sv_list_sorted):
+def count_tp_base(merged_sv_list_sorted, cand_sv_list_sorted, chr_list):
     tp_base_ctr = 0
     cand_start_idx = 0
     for count, base_sv in enumerate(merged_sv_list_sorted):
@@ -437,7 +443,7 @@ def count_tp_base(merged_sv_list_sorted, cand_sv_list_sorted):
         new_cand_start_idx = cand_start_idx
 
         for count1, cand_sv in enumerate(cand_sv_list_sorted[cur_cand_start_idx:]):
-            if (cur_start - cand_sv.sv_stop > max_dist_search and base_sv.ref_name == cand_sv.ref_name) or (idx_chr_name(base_sv.ref_name) > idx_chr_name(cand_sv.ref_name)):
+            if (cur_start - cand_sv.sv_stop > max_dist_search and base_sv.ref_name == cand_sv.ref_name) or (idx_chr_name(base_sv.ref_name, chr_list) > idx_chr_name(cand_sv.ref_name, chr_list)):
                 new_cand_start_idx += 1
                 continue
 
@@ -445,7 +451,7 @@ def count_tp_base(merged_sv_list_sorted, cand_sv_list_sorted):
                 tp_base_ctr += 1
                 break
 
-            if (cand_sv.sv_pos - cur_end > max_dist_search and base_sv.ref_name == cand_sv.ref_name) or (idx_chr_name(base_sv.ref_name) < idx_chr_name(cand_sv.ref_name)):
+            if (cand_sv.sv_pos - cur_end > max_dist_search and base_sv.ref_name == cand_sv.ref_name) or (idx_chr_name(base_sv.ref_name, chr_list) < idx_chr_name(cand_sv.ref_name, chr_list)):
                 break
 
         cand_start_idx = new_cand_start_idx
@@ -474,7 +480,7 @@ def match_sv_dist_only(base_sv, cand_sv):
     
     return True
 
-def count_tp_base_dist_only(sv_list_sorted, cand_sv_list_sorted):
+def count_tp_base_dist_only(sv_list_sorted, cand_sv_list_sorted, chr_list):
     tp_base_ctr = 0
     cand_start_idx = 0
     for count, base_sv in enumerate(sv_list_sorted):
@@ -492,7 +498,7 @@ def count_tp_base_dist_only(sv_list_sorted, cand_sv_list_sorted):
         new_cand_start_idx = cand_start_idx
 
         for count1, cand_sv in enumerate(cand_sv_list_sorted[cur_cand_start_idx:]):
-            if (cur_start - cand_sv.sv_stop > max_dist_search and base_sv.ref_name == cand_sv.ref_name) or (idx_chr_name(base_sv.ref_name) > idx_chr_name(cand_sv.ref_name)):
+            if (cur_start - cand_sv.sv_stop > max_dist_search and base_sv.ref_name == cand_sv.ref_name) or (idx_chr_name(base_sv.ref_name, chr_list) > idx_chr_name(cand_sv.ref_name, chr_list)):
                 new_cand_start_idx += 1
                 continue
 
@@ -500,7 +506,7 @@ def count_tp_base_dist_only(sv_list_sorted, cand_sv_list_sorted):
                 tp_base_ctr += 1
                 break
 
-            if (cand_sv.sv_pos - cur_end > max_dist_search and base_sv.ref_name == cand_sv.ref_name) or (idx_chr_name(base_sv.ref_name) < idx_chr_name(cand_sv.ref_name)):
+            if (cand_sv.sv_pos - cur_end > max_dist_search and base_sv.ref_name == cand_sv.ref_name) or (idx_chr_name(base_sv.ref_name, chr_list) < idx_chr_name(cand_sv.ref_name, chr_list)):
                 break
 
         cand_start_idx = new_cand_start_idx
@@ -509,19 +515,20 @@ def count_tp_base_dist_only(sv_list_sorted, cand_sv_list_sorted):
 ###########################################################
 
 def main():
-    #hg38 samples
-    chr_list = ['chr1','chr2','chr3','chr4','chr5','chr6','chr7',
-                'chr8','chr9','chr10','chr11','chr12','chr13','chr14',
-                'chr15','chr16','chr17','chr18','chr19','chr20','chr21',
-                'chr22','chrX']
+    # #hg38 samples
+    # chr_list = ['chr1','chr2','chr3','chr4','chr5','chr6','chr7',
+    #             'chr8','chr9','chr10','chr11','chr12','chr13','chr14',
+    #             'chr15','chr16','chr17','chr18','chr19','chr20','chr21',
+    #             'chr22','chrX']
     
     sv_list = idx_sv(truth_vcf)
-    cand_sv_list = idx_sv(cand_vcf)
+    chr_list = get_chr_list(sv_list)
+    cand_sv_list = idx_sv(cand_vcf, chr_list)
 
-    sv_list_sorted = sort_sv_list(sv_list)
-    cand_sv_list_sorted = sort_sv_list(cand_sv_list)
+    sv_list_sorted = sort_sv_list(sv_list, chr_list)
+    cand_sv_list_sorted = sort_sv_list(cand_sv_list, chr_list)
 
-    tp_base_ctr = count_tp_base_dist_only(sv_list_sorted, cand_sv_list_sorted)
+    tp_base_ctr = count_tp_base_dist_only(sv_list_sorted, cand_sv_list_sorted, chr_list)
     recall = tp_base_ctr / len(sv_list_sorted)
 
     for sample_name in sample_names:
@@ -530,7 +537,7 @@ def main():
         asm1_trimmed_file = "assem1_sort_trimmed_coor.bed"
         asm2_trimmed_file = "assem2_sort_trimmed_coor.bed"
         
-        filter_dipcall_for_fn_trimcoor(bcf_in_file, asm1_trimmed_file, asm2_trimmed_file, bcf_out_file)
+        filter_truth_set.filter_dipcall_for_fn_trimcoor(bcf_in_file, asm1_trimmed_file, asm2_trimmed_file, bcf_out_file)
 
 if __name__ == "__main__":
     main()
