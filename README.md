@@ -2,6 +2,15 @@
 
 TT-Mars: S**t**ructural Varian**t**s Assess**m**ent B**a**sed on Haplotype-**r**esolved A**s**semblies.
 
+## Disclaimer
+
+**This is a tweaked version of the official TT-Mars (https://github.com/ChaissonLab/TT-Mars)**.
+
+I made a few changes to help our use cases and to simplify the pipelining:
+- no need to specify if we use "hg38" anymore. The chromosome names are guessed from the reference fasta file. Of note, it won't use all the chromosome in the fasta file. It's still looking for just the autosomes and sex chromosomes in case it is important to not include the alt contigs (maybe for the alignment step, or the definition of duplications?).
+- the chromosome lengths are not (approximatively) hard-coded anymore. This should help being more robust, esp. when using non-hg19/hg38 references, e.g. CHM13.
+- chromosome names in the centromere file are consistent with other files. It used to be that the centromere file had the 'chr' prefix no matter what.
+
 ## Usage
 
 0. Clone TT-Mars from github and `cd TT-Mars`.
