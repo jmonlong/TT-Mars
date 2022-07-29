@@ -82,9 +82,9 @@ def write_err(output_file_name, message):
     f.write("\n")
     f.close()
     
-#return chr name as an integer (its position in the chr list)
+#return chr name as an integer (its position in the chr list + 1)
 def get_int_chr_name(name, chr_list):
-    return chr_list.index(name)
+    return chr_list.index(name) + 1
     
 #build map
 def build_map(chr_len, interval, liftover_file, chr_list):
@@ -201,19 +201,16 @@ def inversion_seq(seq):
 def get_chr_tandem_shart_end_list(tandem_info, chr_list):
     start_list = [0] * len(chr_list)
     end_list = [0] * len(chr_list)
-    
-    cur_chr = tandem_info[0][0]
-#     print(tandem_info[chr_index_ctr][0], " start ", chr_index_ctr)
-    start_list[get_int_chr_name(cur_chr, chr_list) - 1] = 0
-    for i, rec in enumerate(tandem_info[1:]):
+    cur_chr = ''
+    for i, rec in enumerate(tandem_info):
         if rec[0] != cur_chr:
-#             print(cur_chr, " end ", i-1)
-            end_list[get_int_chr_name(cur_chr, chr_list) - 1] = i-1
+            if rec[0] in chr_list:
+                start_list[get_int_chr_name(rec[0], chr_list) - 1] = i
+            if cur_chr in chr_list:
+                end_list[get_int_chr_name(cur_chr, chr_list) - 1] = i-1
             cur_chr = rec[0]
-#             print(cur_chr, " start ", i)
-            start_list[get_int_chr_name(cur_chr, chr_list) - 1] = i
-#     print(cur_chr, " end ", len(tandem_info)-1)
-    end_list[get_int_chr_name(cur_chr, chr_list) - 1] = len(tandem_info)-1
+    if cur_chr in chr_list:
+        end_list[get_int_chr_name(cur_chr, chr_list) - 1] = len(tandem_info)-1
     return start_list, end_list
 
 #check if in tandem repeats regions
@@ -858,7 +855,7 @@ def main():
                      "6", "7", "8", "9", "10",
                      "11", "12", "13", "14", "15",
                      "16", "17", "18", "19", "20",
-                     "21", "22", "X"]
+                     "21", "22", "X", "Y"]
     chr_list = []
     chr_len = []
     ref_fasta_file = pysam.FastaFile(ref_file)

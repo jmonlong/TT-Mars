@@ -11,6 +11,8 @@ I made a few changes to help our use cases and to simplify the pipelining:
 - the chromosome lengths are not (approximatively) hard-coded anymore. This should help being more robust, esp. when using non-hg19/hg38 references, e.g. CHM13.
 - chromosome names in the centromere file are consistent with other files. It used to be that the centromere file had the 'chr' prefix no matter what.
 
+Note: I just realized the tandem repeats must be either sorted or at least grouped by chromosome in the tandem repeat file.
+
 ## Usage
 
 0. Clone TT-Mars from github and `cd TT-Mars`.
