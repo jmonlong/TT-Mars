@@ -10,6 +10,7 @@ I made a few changes to help our use cases and to simplify the pipelining:
 - no need to specify if we use "hg38" anymore. The chromosome names are guessed from the reference fasta file. Of note, it won't use all the chromosome in the fasta file. It's still looking for just the autosomes and sex chromosomes in case it is important to not include the alt contigs (maybe for the alignment step, or the definition of duplications?).
 - the chromosome lengths are not (approximatively) hard-coded anymore. This should help being more robust, esp. when using non-hg19/hg38 references, e.g. CHM13.
 - chromosome names in the centromere file are consistent with other files. It used to be that the centromere file had the 'chr' prefix no matter what.
+- To make it easy to parralelize TT-Mars I added a new (optional) argument (`-c/--chrs`) to specify a subset of chromosomes to analyze.
 
 Note: I just realized the tandem repeats must be either sorted or at least grouped by chromosome in the tandem repeat file.
 
@@ -49,6 +50,7 @@ Script to combine results and output:
 `-s/--seq_resolved`: if consider sequence resolved calls (INS).  
 `-w/--wrong_len`: if count wrong length calls as True.  
 `-g/--gt_vali`: conduct genotype validation.  
+`-c/--chrs`: subset of chromosomes to analyze (separated by `,`)
 
 2. combine.py:  
 `-v/--vcf_out`: output results as vcf files (tp (true positive), fp (false positive) and na), must be used together with `-f/--vcf_file`.  

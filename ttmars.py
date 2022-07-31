@@ -64,6 +64,9 @@ parser.add_argument("-g",
                     "--gt_vali",
                     help="conduct genotype validation",
                     action="store_true")
+parser.add_argument("-c",
+                    "--chrs",
+                    help="chromosomes to analyze (list separated by ',')")
 
 
 
@@ -159,7 +162,14 @@ if_gt = args.gt_vali
 #             136000000, 134000000, 116000000, 108000000, 103000000, 
 #             90400000, 83300000, 80400000, 59200000, 64500000, 
 #             48200000, 51400000, 157000000, 59400000]
-
+chr_list_cand = ["1", "2", "3", "4", "5",
+                 "6", "7", "8", "9", "10",
+                 "11", "12", "13", "14", "15",
+                 "16", "17", "18", "19", "20",
+                 "21", "22", "X", "Y"]
+chr_list_cand_filt = chr_list_cand  # subset of chrs to analyze
+if args.chrs:
+    chr_list_cand_filt = args.chrs.split(',')
 
 #max/min length of allowed SV not DUP
 memory_limit = 100000
@@ -199,12 +209,8 @@ def main():
     ref_fasta_file = pysam.FastaFile(ref_file)
 
     # guess the autosome names
-    chr_list_cand = ["1", "2", "3", "4", "5",
-                     "6", "7", "8", "9", "10",
-                     "11", "12", "13", "14", "15",
-                     "16", "17", "18", "19", "20",
-                     "21", "22", "X", "Y"]
     chr_list = []
+    chr_list_filt = []
     chr_len = []
     for chrn in chr_list_cand:
         if chrn not in ref_fasta_file.references:
@@ -212,7 +218,12 @@ def main():
         if chrn in ref_fasta_file.references:
             chr_list.append(chrn)
             chr_len.append(ref_fasta_file.get_reference_length(chrn))
-    
+    for chrn in chr_list_cand_filt:
+        if chrn not in ref_fasta_file.references:
+            chrn = 'chr' + chrn
+        if chrn in ref_fasta_file.references:
+            chr_list_filt.append(chrn)
+
     #get tandem start and end list
     tandem_start_list, tandem_end_list = get_align_info.get_chr_tandem_shart_end_list(tandem_info, chr_list)
 
@@ -262,7 +273,7 @@ def main():
             print("invalid sv type info")
             continue
 
-        if func.first_filter(rec, sv_type, valid_types, if_pass_only, chr_list):
+        if func.first_filter(rec, sv_type, valid_types, if_pass_only, chr_list_filt):
             continue
 
         #get sv length
